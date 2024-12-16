@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Trading Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.2/axios.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/luxon/2.0.2/luxon.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-adapter-luxon/1.1.0/chartjs-adapter-luxon.min.js"></script>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --secondary: #64748b;
+            --background: #0f172a;
+            --surface: #1e293b;
+            --surface-hover: #2c3e50;
+            --text: #f8fafc;
+            --text-secondary: #94a3b8;
+            --success: #22c55e;
+            --danger: #ef4444;
+            --border: rgba(148, 163, 184, 0.1);
+            --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 24px;
+            background-color: var(--background);
+            color: var(--text);
+            line-height: 1.5;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+            gap: 24px;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        .section {
+            background-color: var(--surface);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: var(--card-shadow);
+            border: 1px solid var(--border);
+            transition: transform 0.2s ease;
+        }
+
+        .section:hover {
+            transform: translateY(-2px);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 0 0 32px 0;
+            color: var(--text);
+            letter-spacing: -0.025em;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 0 0 24px 0;
+            color: var(--text);
+        }
+
+        h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 0 0 16px 0;
+            color: var(--text);
+        }
+
+        .card {
+            background-color: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            transition: background-color 0.2s ease;
+        }
+
+        .card:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .bot-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .bot-card {
+            background-color: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.2s ease;
+        }
+
+        .bot-card:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+            transform: translateY(-2px);
+        }
+
+        .bot-card p {
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            font-size: 0.95rem;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0 16px;
+            border: 1px solid var(--border);
+            background-color: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+        }
+
+        input:hover, select:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 56px;
+            height: 30px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--secondary);
+            transition: .3s;
+            border-radius: 30px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--success);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-top: 16px;
+        }
+
+        th, td {
+            padding: 14px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.95rem;
+        }
+
+        th {
+            background-color: rgba(255, 255, 255, 0.02);
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        tr:hover td {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        .profit { color: var(--success); }
+        .loss { color: var(--danger); }
+
+        .grid {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .grid-cols-1 { grid-template-columns: repeat(1, 1fr); }
+        .grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+        
+        @media (min-width: 768px) {
+            .md\:grid-cols-4 {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 16px;
+            }
+            
+            .container {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 2rem;
+                margin-bottom: 24px;
+            }
+        }
+
+        /* Loading states */
+        .loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        /* Animations */
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <h1>Advanced Trading Dashboard</h1>
+    
+    <div class="container">
+        <!-- Rest of the HTML structure remains the same -->
+        <div class="section">
+            <h2>Trading Bots</h2>
+            <div class="bot-controls">
+                <div class="bot-card">
+                    <h3>EMA Crossover Bot</h3>
+                    <p>Uses EMA crossover strategy with RSI confirmation</p>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="ema-bot" onchange="toggleBot('ema', this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                    <div class="bot-settings">
+                        <label>Symbol:</label>
+                        <input type="text" id="ema-symbol" value="TSLA">
+                    </div>
+                </div>
+                
+                <div class="bot-card">
+                    <h3>MACD Bot</h3>
+                    <p>Uses MACD crossover with volume confirmation</p>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="macd-bot" onchange="toggleBot('macd', this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                    <div class="bot-settings">
+                        <label>Symbol:</label>
+                        <input type="text" id="macd-symbol" value="SPY">
+                    </div>
+                </div>
+
+                <div class="bot-card">
+                    <h3>RSI Bot</h3>
+                    <p>Trades based on RSI oversold/overbought levels</p>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="rsi-bot" onchange="toggleBot('rsi', this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                    <div class="bot-settings">
+                        <label>Symbol:</label>
+                        <input type="text" id="rsi-symbol" value="AAPL">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Account Information</h2>
+            <div id="account-info" class="card"></div>
+        </div>
+        
+        <div class="section">
+            <h2>Manual Trading</h2>
+            <form id="order-form" class="card">
+                <label for="symbol">Symbol:</label>
+                <input type="text" id="symbol" required>
+                
+                <label for="quantity">Quantity:</label>
+                <input type="number" id="quantity" required>
+                
+                <label for="side">Side:</label>
+                <select id="side" required>
+                    <option value="BUY">Buy</option>
+                    <option value="SELL">Sell</option>
+                </select>
+                
+                <button type="submit">Submit Order</button>
+            </form>
+        </div>
+
+        <div class="section">
+            <h2>Current Positions</h2>
+            <div id="positions"></div>
+        </div>
+
+        <div class="section">
+            <h2>Market Data</h2>
+            <div id="real-time-data"></div>
+        </div>
+
+        <div class="section">
+            <h2>Backtesting Results</h2>
+            <div class="card">
+                <form id="backtest-form">
+                    <div class="grid grid-cols-1 md:grid-cols-4">
+                        <div>
+                            <label for="backtest-strategy">Strategy:</label>
+                            <select id="backtest-strategy" required>
+                                <option value="ema">EMA Crossover</option>
+                                <option value="macd">MACD</option>
+                                <option value="rsi">RSI</option>
+                                <option value="mean_reversion">Mean Reversion</option>
+                                <option value="momentum">Momentum</option>
+                                <option value="vwap">VWAP</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="backtest-symbol">Symbol:</label>
+                            <input type="text" id="backtest-symbol" required value="AAPL">
+                        </div>
+                        <div>
+                            <label for="backtest-start">Start Date:</label>
+                            <input type="date" id="backtest-start" required>
+                        </div>
+                        <div>
+                            <label for="backtest-end">End Date:</label>
+                            <input type="date" id="backtest-end" required>
+                        </div>
+                    </div>
+                    <button type="submit">Run Backtest</button>
+                </form>
+                
+                <div id="backtest-results" class="hidden">
+                    <div class="grid grid-cols-2 md:grid-cols-4">
+                        <div class="card">
+                            <h3>Total Return</h3>
+                            <p id="total-return" class="text-2xl"></p>
+                        </div>
+                        <div class="card">
+                            <h3>Sharpe Ratio</h3>
+                            <p id="sharpe-ratio" class="text-2xl"></p>
+                        </div>
+                        <div class="card">
+                            <h3>Max Drawdown</h3>
+                            <p id="max-drawdown" class="text-2xl"></p>
+                        </div>
+                        <div class="card">
+                            <h3>Win Rate</h3>
+                            <p id="win-rate" class="text-2xl"></p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <canvas id="equity-curve-chart" height="400"></canvas>
+                    </div>
+                    <div id="trades-table"></div>
+                </div>
+            </div>
+        </div>
+    </div>ssssss
+    <script>
+       // Form submission handler
+document.getElementById('order-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const symbol = document.getElementById('symbol').value.toUpperCase();
+    const quantity = parseFloat(document.getElementById('quantity').value);
+    const side = document.getElementById('side').value.toUpperCase();
+    
+    if (!symbol || !quantity || isNaN(quantity) || quantity <= 0) {
+        alert('Please enter valid symbol and quantity');
+        return;
+    }
+    
+    const submitButton = this.querySelector('button[type="submit"]');
+    const originalButtonText = submitButton.textContent;
+    submitButton.disabled = true;
+    submitButton.textContent = 'Submitting...';
+    
+    axios.post('/orders', {
+        symbol: symbol,
+        qty: quantity,
+        side: side,
+        time_in_force: 'day'
+    })
+    .then(response => {
+        alert(`Order submitted successfully: ${side} ${quantity} shares of ${symbol}`);
+        this.reset();
+        updateOrders();
+    })
+    .catch(error => {
+        alert(`Order submission failed: ${error.response?.data?.message || error.message}`);
+    })
+    .finally(() => {
+        submitButton.disabled = false;
+        submitButton.textContent = originalButtonText;
+    });
+});
+
+function updatePositions() {
+    axios.get('/positions')
+        .then(response => {
+            const positions = response.data;
+            let positionsHtml = '<table><tr><th>Symbol</th><th>Qty</th><th>Market Value</th><th>P/L</th></tr>';
+            positions.forEach(position => {
+                const plClass = parseFloat(position.unrealized_pl) >= 0 ? 'profit' : 'loss';
+                positionsHtml += `
+                    <tr>
+                        <td>${position.symbol}</td>
+                        <td>${position.qty}</td>
+                        <td>$${parseFloat(position.market_value).toLocaleString()}</td>
+                        <td class="${plClass}">$${parseFloat(position.unrealized_pl).toLocaleString()}</td>
+                    </tr>
+                `;
+            });
+            positionsHtml += '</table>';
+            document.getElementById('positions').innerHTML = positionsHtml;
+        })
+        .catch(error => handleApiError(error, 'positions'));
+}
+
+function updateRealTimeData() {
+    axios.get('/market_data')
+        .then(response => {
+            const data = response.data;
+            let html = '<div class="card">';
+            html += '<h3>Stocks</h3><table><tr><th>Symbol</th><th>Price</th><th>Change</th></tr>';
+            for (const [symbol, quote] of Object.entries(data.stocks)) {
+                const priceClass = quote.price_change >= 0 ? 'profit' : 'loss';
+                html += `
+                    <tr>
+                        <td>${symbol}</td>
+                        <td>$${quote.ask_price.toFixed(2)}</td>
+                        <td class="${priceClass}">${quote.price_change?.toFixed(2)}%</td>
+                    </tr>
+                `;
+            }
+            html += '</table></div>';
+            document.getElementById('real-time-data').innerHTML = html;
+        })
+        .catch(error => handleApiError(error, 'real-time-data'));
+}
+
+function cancelOrder(orderId) {
+    if (confirm('Are you sure you want to cancel this order?')) {
+        axios.delete(`/orders/${orderId}`)
+            .then(() => {
+                alert('Order cancelled successfully');
+                updateOrders();
+            })
+            .catch(error => {
+                alert(`Failed to cancel order: ${error.response?.data?.message || error.message}`);
+            });
+    }
+}
+
+function toggleBot(botType, enabled) {
+    const symbol = document.getElementById(`${botType}-symbol`).value;
+    axios.post('/toggle_bot', {
+        bot_type: botType,
+        enabled: enabled,
+        symbol: symbol
+    })
+    .then(() => {
+        alert(`${botType.toUpperCase()} bot ${enabled ? 'enabled' : 'disabled'}`);
+    })
+    .catch(error => {
+        alert(`Error toggling ${botType} bot`);
+    });
+}
+
+function updateAccountInfo() {
+    axios.get('/account_info')
+        .then(response => {
+            const data = response.data;
+            document.getElementById('account-info').innerHTML = `
+                <div>
+                    <h3>Portfolio Value</h3>
+                    <p class="value">$${parseFloat(data.portfolio_value).toLocaleString()}</p>
+                </div>
+                <div>
+                    <h3>Buying Power</h3>
+                    <p class="value">$${parseFloat(data.buying_power).toLocaleString()}</p>
+                </div>
+                <div>
+                    <h3>Cash</h3>
+                    <p class="value">$${parseFloat(data.cash).toLocaleString()}</p>
+                </div>
+            `;
+        })
+        .catch(error => handleApiError(error, 'account-info'));
+}
+
+function updateOrders() {
+    axios.get('/orders')
+        .then(response => {
+            const orders = response.data;
+            let ordersHtml = '<table><tr><th>Symbol</th><th>Side</th><th>Qty</th><th>Status</th><th>Action</th></tr>';
+            orders.forEach(order => {
+                ordersHtml += `
+                    <tr>
+                        <td>${order.symbol}</td>
+                        <td>${order.side}</td>
+                        <td>${order.qty}</td>
+                        <td>${order.status}</td>
+                        <td><button onclick="cancelOrder('${order.id}')">Cancel</button></td>
+                    </tr>
+                `;
+            });
+            ordersHtml += '</table>';
+            document.getElementById('orders').innerHTML = ordersHtml;
+        })
+        .catch(error => handleApiError(error, 'orders'));
+}
+
+function handleApiError(error, context) {
+    console.error(`Error in ${context}:`, error);
+    document.getElementById(context).innerHTML = `
+        <div class="card" style="border-color: var(--danger)">
+            <p style="color: var(--danger)">Failed to load data</p>
+            <button onclick="retry${context}()">Retry</button>
+        </div>
+    `;
+}
+
+function initializeDashboard() {
+    updateAccountInfo();
+    updateRealTimeData();
+    updatePositions();
+    updateOrders();
+    
+    setInterval(updateAccountInfo, 30000);
+    setInterval(updateRealTimeData, 5000);
+    setInterval(updatePositions, 10000);
+    setInterval(updateOrders, 10000);
+    
+    const end = new Date();
+    const start = new Date();
+    start.setMonth(start.getMonth() - 3);
+    document.getElementById('backtest-start').value = start.toISOString().split('T')[0];
+    document.getElementById('backtest-end').value = end.toISOString().split('T')[0];
+}
+
+document.getElementById('backtest-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const data = {
+        strategy: document.getElementById('backtest-strategy').value,
+        symbol: document.getElementById('backtest-symbol').value.toUpperCase(),
+        start_date: document.getElementById('backtest-start').value,
+        end_date: document.getElementById('backtest-end').value
+    };
+    
+    const submitButton = this.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+    submitButton.textContent = 'Running...';
+    
+    axios.post('/backtest', data)
+        .then(response => {
+            if (response.data.error) throw new Error(response.data.error);
+            displayBacktestResults(response.data);
+        })
+        .catch(error => {
+            alert(`Backtest failed: ${error.response?.data?.error || error.message}`);
+            displayBacktestResults({
+                metrics: { total_return: 0, sharpe_ratio: 0, max_drawdown: 0, win_rate: 0 },
+                equity_curve: [],
+                trades: []
+            });
+        })
+        .finally(() => {
+            submitButton.disabled = false;
+            submitButton.textContent = 'Run Backtest';
+        });
+});
+
+function displayBacktestResults(results) {
+    document.getElementById('backtest-results').classList.remove('hidden');
+    
+    document.getElementById('total-return').textContent = 
+        `${(results.metrics?.total_return || 0).toFixed(2)}%`;
+    document.getElementById('sharpe-ratio').textContent = 
+        (results.metrics?.sharpe_ratio || 0).toFixed(2);
+    document.getElementById('max-drawdown').textContent = 
+        `${(results.metrics?.max_drawdown || 0).toFixed(2)}%`;
+    document.getElementById('win-rate').textContent = 
+        `${(results.metrics?.win_rate || 0).toFixed(2)}%`;
+    
+    const chartCanvas = document.getElementById('equity-curve-chart');
+    const existingChart = Chart.getChart(chartCanvas);
+    if (existingChart) existingChart.destroy();
+    
+    if (results.equity_curve?.length > 0) {
+        const formattedData = results.equity_curve.map(d => ({
+            x: new Date(d.date),
+            y: parseFloat(d.equity)
+        }));
+        
+        new Chart(chartCanvas.getContext('2d'), {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: 'Portfolio Value',
+                    data: formattedData,
+                    borderColor: '#2563eb',
+                    tension: 0.1,
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'day',
+                            displayFormats: { day: 'MMM d, yyyy' }
+                        },
+                        ticks: { color: '#f8fafc' },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                    },
+                    y: {
+                        beginAtZero: false,
+                        ticks: {
+                            color: '#f8fafc',
+                            callback: value => `$${value.toLocaleString()}`
+                        },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: { color: '#f8fafc' }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: context => `Portfolio Value: $${context.raw.y.toLocaleString()}`
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    document.getElementById('trades-table').innerHTML = `
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Side</th>
+                    <th>Price</th>
+                    <th>Quantity</th>
+                    <th>P&L</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${(results.trades || []).map(trade => `
+                    <tr>
+                        <td>${new Date(trade.date).toLocaleDateString()}</td>
+                        <td>${trade.side || ''}</td>
+                        <td>$${(trade.price || 0).toFixed(2)}</td>
+                        <td>${trade.quantity || 0}</td>
+                        <td class="${(trade.pnl || 0) >= 0 ? 'profit' : 'loss'}">
+                            $${(trade.pnl || 0).toFixed(2)}
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+document.addEventListener('DOMContentLoaded', initializeDashboard);
+        </script>
+</body>
+</html>
+
